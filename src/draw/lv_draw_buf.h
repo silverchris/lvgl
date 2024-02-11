@@ -32,7 +32,7 @@ LV_EXPORT_CONST_INT(LV_STRIDE_AUTO);
 typedef struct {
     lv_image_header_t header;
     uint32_t data_size;     /*Total buf size in bytes*/
-    void * data;
+    uint8_t * data;
     void * unaligned_data;  /*Unaligned address of `data`, used internally by lvgl*/
 } lv_draw_buf_t;
 
@@ -73,8 +73,7 @@ typedef void (*lv_draw_buf_free_cb)(void * draw_buf);
 
 typedef void * (*lv_draw_buf_align_cb)(void * buf, lv_color_format_t color_format);
 
-typedef void (*lv_draw_buf_invalidate_cache_cb)(void * buf, uint32_t stride, lv_color_format_t color_format,
-                                                const lv_area_t * area);
+typedef void (*lv_draw_buf_invalidate_cache_cb)(lv_draw_buf_t * draw_buf, const lv_area_t * area);
 
 typedef uint32_t (*lv_draw_buf_width_to_stride_cb)(uint32_t w, lv_color_format_t color_format);
 
@@ -112,12 +111,11 @@ void * lv_draw_buf_align(void * buf, lv_color_format_t color_format);
 
 /**
  * Invalidate the cache of the buffer
- * @param buf          a memory address to invalidate
- * @param stride       stride of the buffer
- * @param color_format color format of the buffer
- * @param area         the area to invalidate in the buffer
+ * @param draw_buf     the draw buffer needs to be invalidated
+ * @param area         the area to invalidate in the buffer,
+ *                     use NULL to invalidate the whole draw buffer address range
  */
-void lv_draw_buf_invalidate_cache(void * buf, uint32_t stride, lv_color_format_t color_format, const lv_area_t * area);
+void lv_draw_buf_invalidate_cache(lv_draw_buf_t * draw_buf, const lv_area_t * area);
 
 /**
  * Calculate the stride in bytes based on a width and color format
@@ -206,9 +204,12 @@ void lv_draw_buf_destroy(lv_draw_buf_t * buf);
 void * lv_draw_buf_goto_xy(const lv_draw_buf_t * buf, uint32_t x, uint32_t y);
 
 /**
- * Adjust the stride of a draw buf.
+ * Adjust the stride of a draw buf in place.
+ * @param src       pointer to a draw buffer
+ * @param stride    the new stride in bytes for image. Use LV_STRIDE_AUTO for automatic calculation.
+ * @return          LV_RESULT_OK: success or LV_RESULT_INVALID: failed
  */
-lv_draw_buf_t * lv_draw_buf_adjust_stride(const lv_draw_buf_t * src, uint32_t stride);
+lv_result_t lv_draw_buf_adjust_stride(lv_draw_buf_t * src, uint32_t stride);
 
 /**
  * Premultiply draw buffer color with alpha channel.

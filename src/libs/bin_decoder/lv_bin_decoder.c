@@ -71,8 +71,6 @@ static lv_fs_res_t fs_read_file_at(lv_fs_file_t * f, uint32_t pos, void * buff, 
 
 static lv_result_t decompress_image(lv_image_decoder_dsc_t * dsc, const lv_image_compressed_t * compressed);
 
-static void bin_decoder_cache_free_cb(lv_image_cache_data_t * cached_data, void * user_data);
-
 /**********************
  *  STATIC VARIABLES
  **********************/
@@ -103,7 +101,7 @@ void lv_bin_decoder_init(void)
     lv_image_decoder_set_open_cb(decoder, lv_bin_decoder_open);
     lv_image_decoder_set_get_area_cb(decoder, lv_bin_decoder_get_area);
     lv_image_decoder_set_close_cb(decoder, lv_bin_decoder_close);
-    lv_image_decoder_set_cache_free_cb(decoder, (lv_cache_free_cb_t)bin_decoder_cache_free_cb);
+    lv_image_decoder_set_cache_free_cb(decoder, NULL); /*Use general cache free method*/
 }
 
 lv_result_t lv_bin_decoder_info(lv_image_decoder_t * decoder, const void * src, lv_image_header_t * header)
@@ -230,7 +228,8 @@ lv_result_t lv_bin_decoder_open(lv_image_decoder_t * decoder, lv_image_decoder_d
                 || cf == LV_COLOR_FORMAT_XRGB8888   \
                 || cf == LV_COLOR_FORMAT_RGB888     \
                 || cf == LV_COLOR_FORMAT_RGB565     \
-                || cf == LV_COLOR_FORMAT_RGB565A8) {
+                || cf == LV_COLOR_FORMAT_RGB565A8   \
+                || cf == LV_COLOR_FORMAT_ARGB8565) {
             res = decode_rgb(decoder, dsc);
         }
 #else
@@ -381,6 +380,7 @@ lv_result_t lv_bin_decoder_get_area(lv_image_decoder_t * decoder, lv_image_decod
                      || cf == LV_COLOR_FORMAT_XRGB8888  \
                      || cf == LV_COLOR_FORMAT_RGB888    \
                      || cf == LV_COLOR_FORMAT_RGB565    \
+                     || cf == LV_COLOR_FORMAT_ARGB8565  \
                      || cf == LV_COLOR_FORMAT_RGB565A8;
     if(!supported) {
         LV_LOG_WARN("CF: %d is not supported", cf);
@@ -469,7 +469,7 @@ lv_result_t lv_bin_decoder_get_area(lv_image_decoder_t * decoder, lv_image_decod
     }
 
     if(cf == LV_COLOR_FORMAT_ARGB8888 || cf == LV_COLOR_FORMAT_XRGB8888 || cf == LV_COLOR_FORMAT_RGB888
-       || cf == LV_COLOR_FORMAT_RGB565) {
+       || cf == LV_COLOR_FORMAT_RGB565 || cf == LV_COLOR_FORMAT_ARGB8565) {
         uint32_t len = (w_px * bpp) / 8;
         offset += decoded_area->y1 * dsc->header.stride;
         offset += decoded_area->x1 * bpp / 8; /*Move to x1*/
@@ -1069,24 +1069,12 @@ static lv_result_t decompress_image(lv_image_decoder_dsc_t * dsc, const lv_image
     uint32_t out_len = compressed->decompressed_size;
     uint32_t input_len = compressed->compressed_size;
     LV_UNUSED(input_len);
+    LV_UNUSED(out_len);
 
-    /**
-     * @todo
-     * FIXME, RLE compressed image needs extra memory because decompression operates on
-     * pixel unit not byte unit. Should optimize RLE decompress to not write to extra memory.
-     */
-    dsc->header.h += 1;
     lv_draw_buf_t * decompressed = lv_draw_buf_create(dsc->header.w, dsc->header.h, dsc->header.cf,
                                                       dsc->header.stride);
     if(decompressed == NULL) {
         LV_LOG_WARN("No memory for decompressed image, input: %" LV_PRIu32 ", output: %" LV_PRIu32, input_len, out_len);
-        return LV_RESULT_INVALID;
-    }
-
-    dsc->header.h -= 1; /*Change it back*/
-    if(decompressed->data_size < out_len) {
-        LV_LOG_WARN("decompressed size mismatch: %" LV_PRIu32 ", %" LV_PRIu32, decompressed->data_size, out_len);
-        lv_draw_buf_destroy(decompressed);
         return LV_RESULT_INVALID;
     }
 
@@ -1141,12 +1129,4 @@ static lv_result_t decompress_image(lv_image_decoder_dsc_t * dsc, const lv_image
 
     decoder_data->decompressed = decompressed; /*Free on decoder close*/
     return LV_RESULT_OK;
-}
-
-static void bin_decoder_cache_free_cb(lv_image_cache_data_t * cached_data, void * user_data)
-{
-    LV_UNUSED(user_data); /*Unused*/
-
-    lv_draw_buf_destroy((lv_draw_buf_t *)cached_data->decoded);
-    if(cached_data->src_type == LV_IMAGE_SRC_FILE) lv_free((void *)cached_data->src);
 }

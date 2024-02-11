@@ -14,6 +14,7 @@
 #include "lv_draw_vg_lite_type.h"
 #include "lv_vg_lite_path.h"
 #include "lv_vg_lite_utils.h"
+#include "lv_vg_lite_grad.h"
 
 /*********************
  *      DEFINES
@@ -94,9 +95,6 @@ static void task_draw_cb(void * ctx, const lv_vector_path_t * path, const lv_vec
         return;
     }
 
-    /* set scissor area */
-    lv_vg_lite_set_scissor_area(&dsc->scissor_area);
-
     /* convert color */
     vg_lite_color_t vg_color = lv_color32_to_vg(dsc->fill_dsc.color, dsc->fill_dsc.opa);
 
@@ -118,6 +116,30 @@ static void task_draw_cb(void * ctx, const lv_vector_path_t * path, const lv_vec
     float min_x, min_y, max_x, max_y;
     lv_vg_lite_path_get_bonding_box(lv_vg_path, &min_x, &min_y, &max_x, &max_y);
 
+    if(vg_lite_query_feature(gcFEATURE_BIT_VG_SCISSOR)) {
+        /* set scissor area */
+        lv_vg_lite_set_scissor_area(&dsc->scissor_area);
+    }
+    else {
+        /* calc inverse matrix */
+        vg_lite_matrix_t result;
+        if(!lv_vg_lite_matrix_inverse(&result, &matrix)) {
+            LV_LOG_ERROR("no inverse matrix");
+            LV_PROFILER_END;
+            return;
+        }
+
+        /* Reverse the clip area on the source */
+        lv_point_precise_t p1 = { dsc->scissor_area.x1, dsc->scissor_area.y1 };
+        lv_point_precise_t p1_res = lv_vg_lite_matrix_transform_point(&result, &p1);
+
+        /* vg-lite bounding_box will crop the pixels on the edge, so +1px is needed here */
+        lv_point_precise_t p2 = { dsc->scissor_area.x2 + 1, dsc->scissor_area.y2 + 1 };
+        lv_point_precise_t p2_res = lv_vg_lite_matrix_transform_point(&result, &p2);
+
+        lv_vg_lite_path_set_bonding_box(lv_vg_path, p1_res.x, p1_res.y, p2_res.x, p2_res.y);
+    }
+
     switch(dsc->fill_dsc.style) {
         case LV_VECTOR_DRAW_STYLE_SOLID: {
                 /* normal draw shape */
@@ -137,15 +159,13 @@ static void task_draw_cb(void * ctx, const lv_vector_path_t * path, const lv_vec
                 vg_lite_buffer_t image_buffer;
                 lv_image_decoder_dsc_t decoder_dsc;
                 if(lv_vg_lite_buffer_open_image(&image_buffer, &decoder_dsc, dsc->fill_dsc.img_dsc.src, false)) {
+                    /* Calculate pattern matrix. Should start from path bond box, and also apply fill matrix. */
                     lv_matrix_t m = dsc->matrix;
                     lv_matrix_translate(&m, min_x, min_y);
                     lv_matrix_multiply(&m, &dsc->fill_dsc.matrix);
 
-                    vg_lite_matrix_t src_matrix;
-                    lv_matrix_to_vg(&src_matrix, &m);
-
-                    vg_lite_matrix_t path_matrix;
-                    vg_lite_identity(&path_matrix);
+                    vg_lite_matrix_t pattern_matrix;
+                    lv_matrix_to_vg(&pattern_matrix, &m);
 
                     vg_lite_color_t recolor = lv_vg_lite_color(dsc->fill_dsc.img_dsc.recolor, dsc->fill_dsc.img_dsc.recolor_opa, true);
 
@@ -154,9 +174,9 @@ static void task_draw_cb(void * ctx, const lv_vector_path_t * path, const lv_vec
                                                &u->target_buffer,
                                                vg_path,
                                                fill,
-                                               &path_matrix,
+                                               &matrix,
                                                &image_buffer,
-                                               &src_matrix,
+                                               &pattern_matrix,
                                                blend,
                                                VG_LITE_PATTERN_COLOR,
                                                recolor,
@@ -164,7 +184,7 @@ static void task_draw_cb(void * ctx, const lv_vector_path_t * path, const lv_vec
                                                VG_LITE_FILTER_BI_LINEAR));
                     LV_PROFILER_END_TAG("vg_lite_draw_pattern");
 
-                    lv_vg_lite_push_image_decoder_dsc(&u->base_unit, &decoder_dsc);
+                    lv_vg_lite_push_image_decoder_dsc(u, &decoder_dsc);
                 }
             }
             break;
@@ -178,6 +198,7 @@ static void task_draw_cb(void * ctx, const lv_vector_path_t * path, const lv_vec
 
                 if(style == LV_VECTOR_GRADIENT_STYLE_LINEAR) {
                     lv_vg_lite_draw_linear_grad(
+                        u,
                         &u->target_buffer,
                         vg_path,
                         &grad_area,
@@ -204,8 +225,10 @@ static void task_draw_cb(void * ctx, const lv_vector_path_t * path, const lv_vec
     /* drop path */
     lv_vg_lite_path_drop(u, lv_vg_path);
 
-    /* disable scissor */
-    lv_vg_lite_disable_scissor();
+    if(vg_lite_query_feature(gcFEATURE_BIT_VG_SCISSOR)) {
+        /* disable scissor */
+        lv_vg_lite_disable_scissor();
+    }
 
     LV_PROFILER_END;
 }

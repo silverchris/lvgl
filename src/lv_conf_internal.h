@@ -164,7 +164,7 @@
             #endif
         #endif
     #endif
-#endif  /*LV_USE_MALLOC == LV_STDLIB_BUILTIN*/
+#endif  /*LV_USE_STDLIB_MALLOC == LV_STDLIB_BUILTIN*/
 
 /*====================
    HAL SETTINGS
@@ -277,6 +277,19 @@
             #define LV_USE_DRAW_ARM2D_SYNC CONFIG_LV_USE_DRAW_ARM2D_SYNC
         #else
             #define LV_USE_DRAW_ARM2D_SYNC      0
+        #endif
+    #endif
+
+    /* Enable native helium assembly to be compiled */
+    #ifndef LV_USE_NATIVE_HELIUM_ASM
+        #ifdef _LV_KCONFIG_PRESENT
+            #ifdef CONFIG_LV_USE_NATIVE_HELIUM_ASM
+                #define LV_USE_NATIVE_HELIUM_ASM CONFIG_LV_USE_NATIVE_HELIUM_ASM
+            #else
+                #define LV_USE_NATIVE_HELIUM_ASM 0
+            #endif
+        #else
+            #define LV_USE_NATIVE_HELIUM_ASM    1
         #endif
     #endif
 
@@ -468,6 +481,17 @@
         #define LV_VG_LITE_FLUSH_MAX_COUNT CONFIG_LV_VG_LITE_FLUSH_MAX_COUNT
     #else
         #define LV_VG_LITE_FLUSH_MAX_COUNT 8
+    #endif
+#endif
+
+/* Enable border to simulate shadow
+ * NOTE: which usually improves performance,
+ * but does not guarantee the same rendering quality as the software. */
+#ifndef LV_VG_LITE_USE_BOX_SHADOW
+    #ifdef CONFIG_LV_VG_LITE_USE_BOX_SHADOW
+        #define LV_VG_LITE_USE_BOX_SHADOW CONFIG_LV_VG_LITE_USE_BOX_SHADOW
+    #else
+        #define LV_VG_LITE_USE_BOX_SHADOW 0
     #endif
 #endif
 
@@ -886,6 +910,15 @@
             #endif
         #else
             #define LV_VG_LITE_THORVG_16PIXELS_ALIGN 1
+        #endif
+    #endif
+
+    /*Buffer address alignment*/
+    #ifndef LV_VG_LITE_THORVG_BUF_ADDR_ALIGN
+        #ifdef CONFIG_LV_VG_LITE_THORVG_BUF_ADDR_ALIGN
+            #define LV_VG_LITE_THORVG_BUF_ADDR_ALIGN CONFIG_LV_VG_LITE_THORVG_BUF_ADDR_ALIGN
+        #else
+            #define LV_VG_LITE_THORVG_BUF_ADDR_ALIGN 64
         #endif
     #endif
 
@@ -2316,15 +2349,6 @@
     #endif
 #endif
 
-/*Enable LZ4 compress/decompress lib*/
-#ifndef LV_USE_LZ4
-    #ifdef CONFIG_LV_USE_LZ4
-        #define LV_USE_LZ4 CONFIG_LV_USE_LZ4
-    #else
-        #define LV_USE_LZ4  0
-    #endif
-#endif
-
 /*Use lvgl built-in LZ4 lib*/
 #ifndef LV_USE_LZ4_INTERNAL
     #ifdef CONFIG_LV_USE_LZ4_INTERNAL
@@ -2423,7 +2447,7 @@
     #endif
 
     /*1: Show the used memory and the memory fragmentation
-     * Requires `LV_USE_BUILTIN_MALLOC = 1`
+     * Requires `LV_USE_STDLIB_MALLOC = LV_STDLIB_BUILTIN`
      * Requires `LV_USE_SYSMON = 1`*/
     #ifndef LV_USE_MEM_MONITOR
         #ifdef CONFIG_LV_USE_MEM_MONITOR
@@ -3174,6 +3198,13 @@ LV_EXPORT_CONST_INT(LV_DRAW_BUF_ALIGN);
     #define LV_LOG_TRACE_ANIM       0
 #endif  /*LV_USE_LOG*/
 
+#ifndef LV_USE_LZ4
+    #define LV_USE_LZ4  (LV_USE_LZ4_INTERNAL || LV_USE_LZ4_EXTERNAL)
+#endif
+
+#ifndef LV_USE_THORVG
+    #define LV_USE_THORVG  (LV_USE_LZ4_INTERNAL || LV_USE_LZ4_EXTERNAL)
+#endif
 
 /*If running without lv_conf.h add typedefs with default value*/
 #ifdef LV_CONF_SKIP

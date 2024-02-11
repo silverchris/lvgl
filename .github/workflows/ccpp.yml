@@ -45,12 +45,12 @@ jobs:
         path: |
              tests/ref_imgs/**/*_err.png
              test_screenshot_error.h
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      if: github.event_name == 'push' && github.repository == 'lvgl/lvgl'
-      with:
-        fail_ci_if_error: true
-        verbose: true
+#    - name: Upload coverage to Codecov
+#      uses: codecov/codecov-action@v4
+#      if: github.event_name == 'push' && github.repository == 'lvgl/lvgl'
+#      with:
+#        fail_ci_if_error: true
+#        verbose: true
   test-cross:
     # The host should always be linux
     runs-on: ubuntu-latest
@@ -65,14 +65,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ammaraskar/gcc-problem-matcher@master
       - name: Setup cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.ccache
           key: lvgl_ci_cross_test_ccache_${{ matrix.arch }}_${{ github.sha }}
           restore-keys: |
             lvgl_ci_cross_test_ccache_${{ matrix.arch }}
-      - uses: uraimo/run-on-arch-action@v2.6.0
+      - uses: uraimo/run-on-arch-action@v2.7.1
         name: Run tests
         id: build
         with:

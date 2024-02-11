@@ -7,7 +7,7 @@ menu "LVGL configuration"
 	# lv_conf_kconfig.h files are used instead.
 	config LV_CONF_SKIP
 		bool "Check this to not use custom lv_conf.h"
-		default n
+		default y
 
 	config LV_CONF_MINIMAL
 		bool "LVGL minimal configuration."
@@ -239,8 +239,8 @@ menu "LVGL configuration"
 					bool "0: NONE"
 				config LV_DRAW_SW_ASM_NEON
 					bool "1: NEON"
-				config LV_DRAW_SW_ASM_MVE
-					bool "2: MVE"
+				config LV_DRAW_SW_ASM_HELIUM
+					bool "2: HELIUM"
 				config LV_DRAW_SW_ASM_CUSTOM
 					bool "255: CUSTOM"
 			endchoice
@@ -249,8 +249,15 @@ menu "LVGL configuration"
 				int
 				default 0 if LV_DRAW_SW_ASM_NONE
 				default 1 if LV_DRAW_SW_ASM_NEON
-				default 2 if LV_DRAW_SW_ASM_MVE
+				default 2 if LV_DRAW_SW_ASM_HELIUM
 				default 255 if LV_DRAW_SW_ASM_CUSTOM
+
+			config LV_USE_NATIVE_HELIUM_ASM
+				bool	"Enable native helium assembly"
+				default y
+				depends on LV_DRAW_SW_ASM_HELIUM
+				help
+					Disabling this allows arm2d to work on its own (for testing only)
 
 			config LV_DRAW_SW_ASM_CUSTOM_INCLUDE
 				string "Set the custom asm include file"
@@ -373,6 +380,14 @@ menu "LVGL configuration"
 				depends on LV_USE_DRAW_VG_LITE
 				help
 					GPU will try to batch these many draw tasks.
+
+			config LV_VG_LITE_USE_BOX_SHADOW
+				bool "Enable border to simulate shadow."
+				default n
+				depends on LV_USE_DRAW_VG_LITE
+				help
+					which usually improves performance,
+					but does not guarantee the same rendering quality as the software.
 
 			config LV_USE_GPU_SDL
 				bool "Use SDL renderer API"
@@ -710,7 +725,7 @@ menu "LVGL configuration"
 		config LV_FONT_FMT_TXT_LARGE
 			bool "Enable it if you have fonts with a lot of characters."
 			help
-				The limit depends on the font size, font face and bpp
+				The limit depends on the font size, font face and format
 				but with > 10,000 characters if you see issues probably you
 				need to enable it.
 
@@ -1303,6 +1318,11 @@ menu "LVGL configuration"
 		config LV_VG_LITE_THORVG_16PIXELS_ALIGN
 			bool "Enable 16 pixels alignment"
 			default y
+			depends on LV_USE_VG_LITE_THORVG
+
+		config LV_VG_LITE_THORVG_BUF_ADDR_ALIGN
+			int "Buffer address alignment"
+			default 64
 			depends on LV_USE_VG_LITE_THORVG
 
 		config LV_VG_LITE_THORVG_THREAD_RENDER

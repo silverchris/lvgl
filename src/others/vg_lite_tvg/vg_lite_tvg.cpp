@@ -27,10 +27,6 @@
  *      DEFINES
  *********************/
 
-#ifndef LV_VG_LITE_THORVG_BUF_ADDR_ALIGN
-    #define LV_VG_LITE_THORVG_BUF_ADDR_ALIGN 64
-#endif
-
 #define TVG_CANVAS_ENGINE CanvasEngine::Sw
 #define TVG_COLOR(COLOR) B(COLOR), G(COLOR), R(COLOR), A(COLOR)
 #define TVG_IS_VG_FMT_SUPPORT(fmt) ((fmt) == VG_LITE_BGRA8888 || (fmt) == VG_LITE_BGRX8888)
@@ -734,7 +730,6 @@ extern "C" {
     {
         switch(feature) {
             case gcFEATURE_BIT_VG_IM_INDEX_FORMAT:
-            case gcFEATURE_BIT_VG_SCISSOR:
             case gcFEATURE_BIT_VG_BORDER_CULLING:
             case gcFEATURE_BIT_VG_RGBA2_FORMAT:
             case gcFEATURE_BIT_VG_IM_FASTCLAER:
@@ -1773,6 +1768,26 @@ Empty_sequence_handler:
     {
         LV_UNUSED(physical);
         LV_UNUSED(size);
+        return VG_LITE_NOT_SUPPORT;
+    }
+
+    vg_lite_error_t vg_lite_get_parameter(vg_lite_param_type_t type,
+                                          vg_lite_int32_t count,
+                                          vg_lite_float_t * params)
+    {
+        switch(type) {
+            case VG_LITE_GPU_IDLE_STATE:
+                if(count != 1 || params == NULL) {
+                    return VG_LITE_INVALID_ARGUMENT;
+                }
+
+                *(vg_lite_uint32_t *)params = 1;
+                return VG_LITE_SUCCESS;
+
+            default:
+                break;
+        }
+
         return VG_LITE_NOT_SUPPORT;
     }
 } /* extern "C" */
