@@ -23,9 +23,9 @@ extern "C" {
 
 #if LV_USE_OS == LV_OS_FREERTOS
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "semphr.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 
 /*********************
  *      DEFINES

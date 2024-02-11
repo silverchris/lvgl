@@ -16,7 +16,7 @@
 
 #if LV_USE_OS == LV_OS_FREERTOS
 
-#include "atomic.h"
+#include "freertos/atomic.h"
 #include "../misc/lv_log.h"
 
 /*********************
@@ -330,13 +330,16 @@ static void prvMutexInit(lv_mutex_t * pxMutex)
     pxMutex->xIsInitialized = pdTRUE;
 }
 
+portMUX_TYPE lvgl_portmux = portMUX_INITIALIZER_UNLOCKED;
+
+
 static void prvCheckMutexInit(lv_mutex_t * pxMutex)
 {
     /* Check if the mutex needs to be initialized. */
     if(pxMutex->xIsInitialized == pdFALSE) {
         /* Mutex initialization must be in a critical section to prevent two threads
          * from initializing it at the same time. */
-        taskENTER_CRITICAL();
+        taskENTER_CRITICAL(&lvgl_portmux);
 
         /* Check again that the mutex is still uninitialized, i.e. it wasn't
          * initialized while this function was waiting to enter the critical
@@ -346,7 +349,7 @@ static void prvCheckMutexInit(lv_mutex_t * pxMutex)
         }
 
         /* Exit the critical section. */
-        taskEXIT_CRITICAL();
+        taskEXIT_CRITICAL(&lvgl_portmux);
     }
 }
 
